@@ -1,0 +1,19 @@
+{
+  "name": "reai",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,client \"npm run dev -w server\" \"npm run dev -w client\"",
+    "dev:server": "npm run dev -w server",
+    "dev:client": "npm run dev -w client",
+    "test": "npm run test -w server && npm run test -w client"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
+

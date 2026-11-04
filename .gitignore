@@ -1,0 +1,15 @@
+node_modules
+.env
+.env.*
+!.env.example
+server/.env
+server/.env.*
+!server/.env.example
+server/storage
+client/dist
+dist
+data/
+__pycache__/
+*.pyc
+*.log
+.DS_Store
