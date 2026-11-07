@@ -30,6 +30,18 @@ const documentSchema = new mongoose.Schema(
     pageCount: { type: Number, default: 0 },
     pages: [pageSchema],
     totalChars: { type: Number, default: 0 },
+    // Phase 5: diagram / figure analysis runs in the background AFTER the document is ready
+    visionStatus: {
+      type: String,
+      enum: ['none', 'pending', 'running', 'done', 'skipped', 'failed'],
+      default: 'none',
+    },
+    visionProgress: {
+      done: { type: Number, default: 0 },
+      total: { type: Number, default: 0 },
+    },
+    visionNote: { type: String },
+    regionCount: { type: Number, default: 0 },
     expiresAt: { type: Date, required: true, index: true },
   },
   { timestamps: true }

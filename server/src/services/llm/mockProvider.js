@@ -1,6 +1,6 @@
-export async function* generateStream({ prompt, signal }) {
-  // Extract chunks from prompt if available
-  const chunkRegex = /\[(c_[0-9]+_[0-9]+)\]\s*(?:\(Page\s*([0-9]+)\))?:\s*([^\n]+)/g;
+export async function* generateStream({ prompt, signal, meta = {} }) {
+  // Extract chunks from prompt if available (text chunks and figure-part chunks)
+  const chunkRegex = /\[([cr]_[0-9]+_[0-9]+)\]\s*(?:\(Page\s*([0-9]+)[^)]*\))?:\s*([^\n]+)/g;
   const chunks = [];
   let match;
   while ((match = chunkRegex.exec(prompt)) !== null) {
@@ -95,5 +95,7 @@ export async function* generateStream({ prompt, signal }) {
     yield line + '\n';
     await new Promise((r) => setTimeout(r, 60));
   }
+  meta.finishReason = 'STOP';
+  meta.model = 'mock';
 }
 

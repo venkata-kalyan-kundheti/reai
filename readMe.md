@@ -503,3 +503,37 @@ All 15 steps are fully verified and passing:
 - **Client unit tests**: `npm test -w client` (4/4 passing)
 - **Client production build**: `npm run build -w client` (built in 1.18s)
 - **Full monorepo test**: `npm test` (17/17 passing)
+
+---
+
+## 16. Gemini traffic control (rate limits, timeouts, retries)
+
+All Gemini calls (explanations, Ask, "I didn't get this", diagram analysis) go through one controller in
+`server/src/services/llm/`:
+
+| Piece | File | What it guarantees |
+|---|---|---|
+| Scheduler | `gemini/scheduler.js` | Per-model requests/min, tokens/min and concurrency limits; priority queue (Ask/simplify > explanation > diagram analysis); pauses on a 429 and then runs ~40% slower for 5 minutes; daily-quota block that fails fast |
+| Provider | `geminiProvider.js` | First-token, idle and hard timeouts; retries 429/503/timeouts/network with backoff + jitter (honours Google's `retryDelay`); automatic switch to `LLM_FALLBACK_MODEL`; reports `finishReason` |
+| Errors | `errors.js` | One `LlmError` type with `code`, `retryable`, `retryAfterMs`, `partial` |
+| Section runner | `generation/sectionRunner.js` | Continues after `MAX_TOKENS` or a dropped stream, drops repeated segments, retries an empty answer once |
+| Orchestrator | `generation/generate.js` | Saves progress per section, resumes after any failure/restart, pauses (resumable) when the user switches Level/Goal |
+
+**Set your real limits.** Defaults are conservative free-tier numbers (`LLM_RPM=8`, `LLM_TPM=200000`,
+`LLM_MAX_CONCURRENT=2`). Look up your actual limits in Google AI Studio and put them in `server/.env`.
+`GET /api/health/llm` (not in production) shows queue length, requests/tokens used this minute and cooldowns.
+
+**Context.** Each section prompt carries the document outline and the tail of the previous section; Ask / simplify
+build their evidence from the selected region, the cited chunks, their neighbours, the nearest heading and a
+keyword (BM25) search - never "the first 10 chunks".
+
+**Failure behaviour the user sees:** a one-line status bar ("Writing section 2 of 5", "AI is busy, retrying in 12s"),
+and on failure a **Resume** button that keeps everything already written.
+
+## 17. Diagrams and workflows (phase 5)
+
+After a PDF becomes ready, a background pass (`ingest/visionPass.js`) finds figure pages (images / many vector paths),
+renders them with `@napi-rs/canvas`, asks the vision model for the labelled parts and stores them as
+`image_region` chunks (`r_<page>_<n>`) that behave exactly like text chunks (hover, click, highlight).
+Steps of a flow that cite regions get a **Play** walkthrough in the AI panel. Set `VISION_PROVIDER=gemini` to use the
+real model; `mock` uses a text-label heuristic for demos.

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchDocument, fetchChunks } from '../api/documents.js';
 import { createGeneration, askFollowup, simplifySegment } from '../api/generations.js';
@@ -28,24 +28,31 @@ export function DocumentPage() {
   } = useDocStore();
 
   const { level, goal, setCollapsedPane } = useViewStore();
+  const streamStatus = useDocStore((s) => s.streamState.status);
+
+  // level/goal are read through a ref so changing them never re-runs the document-loading effect
+  const levelGoalRef = useRef({ level, goal });
+  levelGoalRef.current = { level, goal };
 
   const [isLoadingDoc, setIsLoadingDoc] = useState(true);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false); // a request (create / ask / simplify) is in flight
   const [error, setError] = useState(null);
   const [askContext, setAskContext] = useState(null);
 
   useHotkeys();
-  useGenerationStream(generation?._id);
+  // finished runs are already complete in the store: only live ones need a stream
+  useGenerationStream(generation && generation.status !== 'done' && generation.status !== 'failed' ? generation._id : null);
 
   const initGeneration = useCallback(
-    async (docId, customLevel = level, customGoal = goal) => {
+    async (docId, customLevel, customGoal) => {
+      const lg = levelGoalRef.current;
       setIsGenerating(true);
       setError(null);
       try {
         const res = await createGeneration({
           documentId: docId,
-          level: customLevel,
-          goal: customGoal,
+          level: customLevel ?? lg.level,
+          goal: customGoal ?? lg.goal,
         });
         setGeneration(res.generation);
       } catch (err) {
@@ -54,7 +61,7 @@ export function DocumentPage() {
         setIsGenerating(false);
       }
     },
-    [level, goal, setGeneration]
+    [setGeneration]
   );
 
   useEffect(() => {
@@ -91,6 +98,53 @@ export function DocumentPage() {
   const handleRegenerate = ({ level: newLevel, goal: newGoal }) => {
     initGeneration(id, newLevel, newGoal);
   };
+
+  // "Resume" / "Try again": the server continues from the last finished section when it can.
+  const handleResume = () => initGeneration(id);
+
+  // Diagram analysis runs in the background after upload: poll until it finishes, then load the regions.
+  const visionStatus = doc?.visionStatus;
+  useEffect(() => {
+    if (!['pending', 'running'].includes(visionStatus)) return undefined;
+    let stopped = false;
+    const timer = setInterval(async () => {
+      try {
+        const { document: fresh } = await fetchDocument(id);
+        if (stopped) return;
+        setDocument(fresh);
+        if (!['pending', 'running'].includes(fresh.visionStatus) && fresh.regionCount > 0) {
+          const { chunks } = await fetchChunks(id);
+          if (!stopped) setChunks(chunks);
+        }
+      } catch {
+        /* transient: try again on the next tick */
+      }
+    }, 3000);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+    };
+  }, [visionStatus, id, setDocument, setChunks]);
+
+  const analysing = ['pending', 'running'].includes(visionStatus) && (doc?.visionProgress?.total || 0) > 0;
+  const figuresNotLinked = doc?.regionCount > 0 && generation && !String(generation.cacheKey || '').endsWith(':fig');
+  const figureBanner =
+    analysing || figuresNotLinked ? (
+      <div className="figure-banner">
+        {figuresNotLinked ? (
+          <>
+            <span>Found {doc.regionCount} diagram parts. Update the explanation to link them.</span>
+            <button className="btn btn-sm btn-primary" onClick={handleResume} disabled={isGenerating}>
+              Update
+            </button>
+          </>
+        ) : (
+          <span>
+            Analysing diagrams ({doc.visionProgress.done}/{doc.visionProgress.total})… you can keep reading.
+          </span>
+        )}
+      </div>
+    ) : null;
 
   const handleAsk = async (question, context) => {
     if (!generation?._id) return;
@@ -153,7 +207,7 @@ export function DocumentPage() {
       onCollapse={() => setCollapsedPane('right')}
       extra={
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {isGenerating && (
+          {(isGenerating || streamStatus === 'streaming') && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--accent-primary)' }}>
               <Spinner size={14} />
               <span>Generating...</span>
@@ -179,6 +233,8 @@ export function DocumentPage() {
         onRegenerate={handleRegenerate}
         onAsk={handleAsk}
         onSimplify={handleSimplify}
+        onResume={handleResume}
+        figureBanner={figureBanner}
         askContext={askContext}
         onClearAskContext={() => setAskContext(null)}
         isLoading={isGenerating}

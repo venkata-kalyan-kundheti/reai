@@ -16,6 +16,8 @@ export const useViewStore = create((set, get) => ({
   isDrawingBox: false,
   level: 'medium',
   goal: 'understanding',
+  // diagram walkthrough: steps are segment ids, index points at the one being shown
+  walkthrough: { playing: false, steps: [], index: 0 },
 
   setActiveSegmentId: (id) => set({ activeSegmentId: id }),
   setHoveredSegmentId: (id) => set({ hoveredSegmentId: id }),
@@ -32,6 +34,16 @@ export const useViewStore = create((set, get) => ({
   setPreviewSource: (preview) => set({ previewSource: preview }),
   setSelectionBox: (box) => set({ selectionBox: box }),
   setIsDrawingBox: (isDrawing) => set({ isDrawingBox: isDrawing }),
+  startWalkthrough: (steps) => set({ walkthrough: { playing: true, steps, index: 0 } }),
+  pauseWalkthrough: () => set((s) => ({ walkthrough: { ...s.walkthrough, playing: false } })),
+  resumeWalkthrough: () => set((s) => ({ walkthrough: { ...s.walkthrough, playing: s.walkthrough.steps.length > 0 } })),
+  stepWalkthrough: (delta) =>
+    set((s) => {
+      const n = s.walkthrough.steps.length;
+      if (!n) return {};
+      return { walkthrough: { ...s.walkthrough, index: Math.max(0, Math.min(n - 1, s.walkthrough.index + delta)) } };
+    }),
+  stopWalkthrough: () => set({ walkthrough: { playing: false, steps: [], index: 0 } }),
   setLevel: (level) => set({ level }),
   setGoal: (goal) => set({ goal }),
 

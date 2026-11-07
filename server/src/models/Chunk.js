@@ -26,6 +26,10 @@ const chunkSchema = new mongoose.Schema(
     bbox: { type: rectSchema, required: true },
     fontSize: { type: Number, default: 10 },
     column: { type: Number, default: 0 },
+    // image_region only: what part of a figure this is, and its position in the flow (1 = first step)
+    regionRole: { type: String },
+    regionSeq: { type: Number },
+    figure: { type: String },
   },
   { timestamps: false }
 );

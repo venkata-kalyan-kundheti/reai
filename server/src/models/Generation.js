@@ -14,6 +14,7 @@ const segmentSchema = new mongoose.Schema(
     text: { type: String, required: true, maxlength: 4000 },
     sources: [{ type: String }],
     confidence: { type: String, enum: ['high', 'low'], default: 'high' },
+    section: { type: Number }, // which document section produced it (used to resume after a failure)
   },
   { _id: false }
 );
@@ -58,6 +59,16 @@ const generationSchema = new mongoose.Schema(
     model: { type: String },
     errorCode: { type: String },
     errorMessage: { type: String },
+    errorRetryable: { type: Boolean, default: true },
+    retryAfterSec: { type: Number },
+    progress: {
+      sectionIndex: { type: Number, default: 0 }, // next section to write (== sections finished)
+      sectionCount: { type: Number, default: 0 },
+    },
+    usage: {
+      calls: { type: Number, default: 0 },
+      tokens: { type: Number, default: 0 },
+    },
     startedAt: { type: Date },
     finishedAt: { type: Date },
   },

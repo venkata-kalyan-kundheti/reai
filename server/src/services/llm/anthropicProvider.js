@@ -12,7 +12,7 @@ function getClient() {
   return anthropicClient;
 }
 
-export async function* generateStream({ system, prompt, model, signal }) {
+export async function* generateStream({ system, prompt, model, signal, meta = {} }) {
   const client = getClient();
   const stream = await client.messages.stream(
     {
@@ -28,6 +28,11 @@ export async function* generateStream({ system, prompt, model, signal }) {
     if (chunk.type === 'content_block_delta' && chunk.delta?.type === 'text_delta') {
       yield chunk.delta.text;
     }
+    if (chunk.type === 'message_delta' && chunk.delta?.stop_reason) {
+      // map Anthropic's reason onto the Gemini-style value the callers understand
+      meta.finishReason = chunk.delta.stop_reason === 'max_tokens' ? 'MAX_TOKENS' : 'STOP';
+    }
   }
+  meta.model = model || env.LLM_MODEL;
 }
 

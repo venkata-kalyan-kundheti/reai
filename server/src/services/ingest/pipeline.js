@@ -7,6 +7,7 @@ import { extractText } from './extractText.js';
 import { buildLines, medianFontSize, buildChunksForPage } from './buildChunks.js';
 import { detectFurniture } from './detectFurniture.js';
 import { orderLines } from './detectColumns.js';
+import { runVisionPass } from './visionPass.js';
 import { MIN_TEXT_CHARS, MIN_TEXT_PAGE_RATIO } from './constants.js';
 
 const noText = () =>
@@ -58,8 +59,12 @@ export async function runPipeline(documentId) {
         pageCount: pages.length,
         pages: pageInfo,
         totalChars: pageInfo.reduce((s, p) => s + p.charCount, 0),
+        visionStatus: 'pending',
       }
     );
+
+    // Diagram analysis continues in the background; the document is already usable.
+    setImmediate(() => runVisionPass(doc._id));
   } catch (err) {
     const known = err instanceof HttpError;
     logger.error({ err, documentId: String(documentId) }, 'ingestion failed');

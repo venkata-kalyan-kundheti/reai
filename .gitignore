@@ -7,9 +7,11 @@ server/.env.*
 !server/.env.example
 server/storage
 client/dist
+data/db
 dist
 data/
 __pycache__/
 *.pyc
 *.log
 .DS_Store
+

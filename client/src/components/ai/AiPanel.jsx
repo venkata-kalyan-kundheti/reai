@@ -3,19 +3,25 @@ import { SegmentItem } from './SegmentItem.jsx';
 import { LevelGoalChips } from './LevelGoalChips.jsx';
 import { SourcePreview } from './SourcePreview.jsx';
 import { AskBar } from './AskBar.jsx';
+import { GenerationStatus } from './GenerationStatus.jsx';
+import { WalkthroughControls } from './WalkthroughControls.jsx';
 import { Spinner } from '../common/Spinner.jsx';
 import { useDocStore } from '../../store/useDocStore.js';
 
-export function AiPanel({ onRegenerate, onAsk, onSimplify, askContext, onClearAskContext, isLoading }) {
-  const { segments, followups, generation } = useDocStore();
+export function AiPanel({ onRegenerate, onAsk, onSimplify, onResume, askContext, onClearAskContext, isLoading, figureBanner }) {
+  const { segments, followups, streamState } = useDocStore();
+  const waitingForFirstSegment = (isLoading || streamState.status === 'streaming') && segments.length === 0;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
       <div className="pane-content">
         <div className="ai-panel-container">
           <LevelGoalChips onRegenerate={onRegenerate} isLoading={isLoading} />
+          <GenerationStatus onResume={onResume} />
+          {figureBanner}
+          <WalkthroughControls />
 
-          {isLoading && segments.length === 0 && (
+          {waitingForFirstSegment && (
             <div
               style={{
                 display: 'flex',

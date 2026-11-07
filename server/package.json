@@ -27,5 +27,8 @@
     "pino-pretty": "^11.2.1",
     "supertest": "^7.0.0",
     "vitest": "^2.0.5"
+  },
+  "optionalDependencies": {
+    "@napi-rs/canvas": "^1.1.0"
   }
 }

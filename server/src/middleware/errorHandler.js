@@ -36,11 +36,13 @@ export function errorHandler(err, req, res, next) {
   }
 
   if (err instanceof HttpError) {
+    if (err.retryAfterSec) res.setHeader('Retry-After', String(err.retryAfterSec));
     return res.status(err.status).json({
       error: {
         code: err.code,
         message: err.message,
         details: err.details,
+        retryAfterSec: err.retryAfterSec,
       },
     });
   }

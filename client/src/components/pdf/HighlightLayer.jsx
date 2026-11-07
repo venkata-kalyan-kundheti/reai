@@ -2,103 +2,55 @@ import React from 'react';
 import { useDocStore } from '../../store/useDocStore.js';
 import { useViewStore } from '../../store/useViewStore.js';
 import { normToPx } from '../../lib/geometry.js';
+import { findSegmentById } from '../../lib/segmentIndex.js';
 
 export function HighlightLayer({ pageNumber, pageWidth, pageHeight }) {
-  const { segments, chunkMap } = useDocStore();
-  const {
-    activeSegmentId,
-    hoveredSegmentId,
-    pinnedSourceId,
-    pointingEnabled,
-  } = useViewStore();
+  const { segments, followups, chunkMap } = useDocStore();
+  const { activeSegmentId, hoveredSegmentId, pinnedSourceId, pointingEnabled, walkthrough } = useViewStore();
 
   if (!pointingEnabled || !pageWidth || !pageHeight) return null;
 
-  const activeSegment = segments.find((s) => s.segmentId === activeSegmentId);
-  const hoveredSegment = segments.find((s) => s.segmentId === hoveredSegmentId);
-
-  const activeSources = new Set(activeSegment?.sources || []);
-  const hoveredSources = new Set(hoveredSegment?.sources || []);
-
   const boxes = [];
 
-  // Pinned highlight
-  if (pinnedSourceId) {
-    const chunk = chunkMap.get(pinnedSourceId);
-    if (chunk && chunk.page === pageNumber) {
-      for (const rect of chunk.rects || [chunk.bbox]) {
-        const px = normToPx(rect, pageWidth, pageHeight);
-        if (px) {
-          boxes.push(
-            <div
-              key={`pinned-${chunk.chunkId}-${boxes.length}`}
-              className="highlight-box pinned"
-              style={{
-                left: `${px.left}px`,
-                top: `${px.top}px`,
-                width: `${px.width}px`,
-                height: `${px.height}px`,
-              }}
-            />
-          );
-        }
-      }
+  const addChunk = (chunkId, className, keyPrefix) => {
+    const chunk = chunkMap.get(chunkId);
+    if (!chunk || chunk.page !== pageNumber) return;
+    const isRegion = chunk.type === 'image_region';
+    for (const rect of chunk.rects?.length ? chunk.rects : [chunk.bbox]) {
+      const px = normToPx(rect, pageWidth, pageHeight);
+      if (!px) continue;
+      boxes.push(
+        <div
+          key={`${keyPrefix}-${chunkId}-${boxes.length}`}
+          className={`highlight-box ${className} ${isRegion ? 'region' : ''}`}
+          style={{ left: `${px.left}px`, top: `${px.top}px`, width: `${px.width}px`, height: `${px.height}px` }}
+        />
+      );
     }
+  };
+
+  // Workflow walkthrough: earlier steps stay faintly visible, the current step glows.
+  if (walkthrough.steps.length) {
+    walkthrough.steps.forEach((segId, i) => {
+      if (i > walkthrough.index) return;
+      const seg = findSegmentById(segments, followups, segId);
+      for (const src of seg?.sources || []) addChunk(src, i === walkthrough.index ? 'active walk-current' : 'walk-visited', `walk${i}`);
+    });
+    return <div className="highlight-layer">{boxes}</div>;
   }
 
-  // Active segment highlights
+  if (pinnedSourceId) addChunk(pinnedSourceId, 'pinned', 'pinned');
+
+  const activeSegment = findSegmentById(segments, followups, activeSegmentId);
   if (activeSegment) {
-    const isLowConfidence = activeSegment.confidence === 'low';
-    for (const sId of activeSources) {
-      const chunk = chunkMap.get(sId);
-      if (chunk && chunk.page === pageNumber) {
-        for (const rect of chunk.rects || [chunk.bbox]) {
-          const px = normToPx(rect, pageWidth, pageHeight);
-          if (px) {
-            boxes.push(
-              <div
-                key={`active-${chunk.chunkId}-${boxes.length}`}
-                className={`highlight-box active ${isLowConfidence ? 'low-confidence' : ''}`}
-                style={{
-                  left: `${px.left}px`,
-                  top: `${px.top}px`,
-                  width: `${px.width}px`,
-                  height: `${px.height}px`,
-                }}
-              />
-            );
-          }
-        }
-      }
-    }
+    const cls = `active ${activeSegment.confidence === 'low' ? 'low-confidence' : ''}`;
+    for (const sId of activeSegment.sources || []) addChunk(sId, cls, 'active');
   }
 
-  // Hovered segment highlights
-  if (hoveredSegment && hoveredSegmentId !== activeSegmentId) {
-    for (const sId of hoveredSources) {
-      const chunk = chunkMap.get(sId);
-      if (chunk && chunk.page === pageNumber) {
-        for (const rect of chunk.rects || [chunk.bbox]) {
-          const px = normToPx(rect, pageWidth, pageHeight);
-          if (px) {
-            boxes.push(
-              <div
-                key={`hover-${chunk.chunkId}-${boxes.length}`}
-                className="highlight-box hovered"
-                style={{
-                  left: `${px.left}px`,
-                  top: `${px.top}px`,
-                  width: `${px.width}px`,
-                  height: `${px.height}px`,
-                }}
-              />
-            );
-          }
-        }
-      }
-    }
+  if (hoveredSegmentId && hoveredSegmentId !== activeSegmentId) {
+    const hovered = findSegmentById(segments, followups, hoveredSegmentId);
+    for (const sId of hovered?.sources || []) addChunk(sId, 'hovered', 'hover');
   }
 
   return <div className="highlight-layer">{boxes}</div>;
 }
-

@@ -1,3 +1,4 @@
+import './pdfjsPolyfills.js';
 import fs from 'node:fs/promises';
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { HttpError } from '../../utils/httpError.js';

@@ -516,3 +516,51 @@ body {
   box-shadow: 0 0 20px var(--accent-glow);
 }
 
+
+/* ---------- Generation status bar ---------- */
+.gen-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: rgba(30, 41, 59, 0.5);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+.gen-status-warn { border-color: #f59e0b; color: #fcd34d; background: rgba(245, 158, 11, 0.08); }
+.gen-status-error { border-color: #ef4444; color: #fca5a5; background: rgba(239, 68, 68, 0.1); }
+
+/* ---------- Figure banner + walkthrough ---------- */
+.figure-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--accent-primary);
+  background: var(--accent-glow);
+  color: var(--text-primary, #e2e8f0);
+  font-size: 0.8rem;
+}
+.walk-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--accent-primary);
+  font-size: 0.8rem;
+}
+.walk-bar-active { border-style: solid; background: var(--accent-glow); }
+.walk-title { font-weight: 600; color: var(--accent-primary); }
+
+/* image-region highlights look different from text highlights */
+.highlight-box.region { border-radius: 6px; box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.55), 0 0 18px rgba(56, 189, 248, 0.45); }
+.highlight-box.walk-visited { background: rgba(56, 189, 248, 0.10); box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.35); }
+.highlight-box.walk-current { animation: walkPulse 1.2s ease-in-out infinite; }
+@keyframes walkPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.65; } }
+.chunk-hit-box.region:hover { outline: 2px dashed var(--accent-primary); outline-offset: 1px; }

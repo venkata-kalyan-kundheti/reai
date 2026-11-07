@@ -30,7 +30,7 @@ export function ChunkHitLayer({ pageNumber, pageWidth, pageHeight }) {
           <div
             key={chunk.chunkId}
             id={`chunk-${chunk.chunkId}`}
-            className="chunk-hit-box"
+            className={`chunk-hit-box ${chunk.type === 'image_region' ? 'region' : ''}`}
             style={{
               left: `${px.left}px`,
               top: `${px.top}px`,
@@ -55,7 +55,7 @@ export function ChunkHitLayer({ pageNumber, pageWidth, pageHeight }) {
                 scrollToSegment(targetSegId);
               }
             }}
-            title={citingSegments.length > 0 ? 'Click to see explaining AI segment' : undefined}
+            title={citingSegments.length > 0 ? 'Click to see the explaining AI segment' : chunk.type === 'image_region' ? chunk.text : undefined}
           />
         );
       })}
